@@ -50,11 +50,10 @@ def main():
 
     if args.exp_name is None:
         # 자동 이름 생성: GenMode_TrainMode_Details 형태
-        args.exp_name = (
-            f"{args.ood_gen_mode}_{args.ood_train_mode}_"
+        args.exp_name =(f"{args.ood_gen_mode}_{args.ood_train_mode}_"
             f"s{args.seed}_{model_aka}_mode_{args.rho_ood_mode}_"
-            f"rho{args.rho_ood_min}-{args.rho_ood_max}"
-        )
+            f"rho{args.rho_ood_min}-{args.rho_ood_max}")
+        
         if args.ood_train_mode == 'binary':
             args.exp_name += f"_E{args.lambda_energy}"
         else:
