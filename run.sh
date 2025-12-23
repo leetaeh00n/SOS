@@ -1,0 +1,112 @@
+#!/bin/bash
+nohup bash -c '
+set -e
+
+# 1. 환경 설정 (본인 경로에 맞게 수정)
+source ~/anaconda3/etc/profile.d/conda.sh
+conda activate act
+
+mkdir -p ./log
+
+# 2. 공통 파라미터
+batch_size=128
+base_data="cifar10" # cifar10 or cifar100
+model_name="WideResNet"  # WideResNet or ResNet
+
+GPU_ID=6
+EPOCHS=200
+START_EPOCHS=80
+# 3. 실험 변수 설정
+seeds=(602)
+# rho_modes=("auroc_ma" "linear_inc" "linear_dec" "cosine" "energy_metric" "const")
+rho_modes=("auroc_ma" "energy_metric")
+
+MODE_LIST=(
+  "ce:binary"
+)
+
+LAMBDA=(
+  "0.1:0.1:0.1:1.0"
+)
+for seed in "${seeds[@]}"; do
+  for rho_mode in "${rho_modes[@]}"; do
+    for mode_pair in "${MODE_LIST[@]}"; do
+      for lambda_set in "${LAMBDA[@]}"; do
+
+        # 문자열 파싱 (예: energy:binary -> GEN_MODE=energy, TRAIN_MODE=binary)
+        IFS=":" read -r GEN_MODE TRAIN_MODE <<< "${mode_pair}"
+
+        # 실험별 Argument 동적 생성
+        current_args=""
+        
+        # [학습 방식에 따른 추가 파라미터 설정]
+        if [ "$TRAIN_MODE" == "binary" ]; then
+          # Binary Mode (Energy Head)
+          # lambda_energy 값을 변경하고 싶다면 여기서 반복문 추가 가능
+          current_args="--lambda_energy 0.1"
+        
+        elif [ "$TRAIN_MODE" == "regularization" ]; then
+          # Regularization Mode (KL/Sep/Rank)
+          # 필요한 Loss 조합을 여기서 설정
+          # lambda_sep:lambda_kl:lambda_rank:margin
+          IFS=":" read -r l_sep l_kl l_rank marg <<< "${lambda_set}"
+          current_args="--use_kl_loss --lambda_kl ${l_kl} \
+                        --use_sep_loss --lambda_sep ${l_sep} \
+                        --use_rank_loss --lambda_rank ${l_rank} \
+                        --margin ${marg}"
+          
+        fi
+
+        # Set rho_min and rho_max based on base_data
+        if [ "$base_data" == "cifar10" ]; then
+          rho_min=0.0
+          rho_max=1.0
+        elif [ "$base_data" == "cifar100" ]; then
+          rho_min=0.0
+          rho_max=1.0
+        fi
+
+
+        # 실행 ID 생성
+        RUN_ID="${base_data}_${GEN_MODE}_${TRAIN_MODE}_seed${seed}_${rho_mode}"
+        TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+        OUT_LOG_FILE="./log/${TIMESTAMP}_${RUN_ID}.out"
+        ERR_LOG_FILE="./log/${TIMESTAMP}_${RUN_ID}.err"
+
+        echo "========================================================"
+        echo "[$(date)] Starting Run: ${RUN_ID}"
+        echo " -> Gen: ${GEN_MODE}, Train: ${TRAIN_MODE}, Rho Schedule Mode: ${rho_mode}"
+        echo "========================================================"
+
+        if ! CUDA_VISIBLE_DEVICES=${GPU_ID} python sos_rho2.py \
+            --use_wandb \
+            --batch_size ${batch_size} \
+            --base_data ${base_data} \
+            --model_name ${model_name} \
+            --epochs ${EPOCHS} \
+            --start_epoch ${START_EPOCHS} \
+            --rho_ood_mode ${rho_mode} \
+            --rho_ood_min ${rho_min} \
+            --rho_ood_max ${rho_max} \
+            --seed ${seed} \
+            --temperature 1.0 \
+            --save_dir_base "./sos_rho_schedule/" \
+            --ood_gen_mode ${GEN_MODE} \
+            --ood_train_mode ${TRAIN_MODE} \
+            ${current_args} \
+            > "${OUT_LOG_FILE}" 2> "${ERR_LOG_FILE}"; then
+          
+          echo "[$(date)] ERROR: Run failed for ${RUN_ID}" | tee -a "./log/failed_runs_${TIMESTAMP}.log"
+        else
+          echo "[$(date)] SUCCESS: Run completed for ${RUN_ID}"
+          rm -f "${ERR_LOG_FILE}"
+        fi
+
+        sleep 5
+      done
+    done
+  done
+done
+
+echo "[$(date)] All unified experiments done."
+' &
