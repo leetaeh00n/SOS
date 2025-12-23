@@ -2,13 +2,11 @@
 nohup bash -c '
 set -e
 
-# 1. 환경 설정 (본인 경로에 맞게 수정)
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate act
 
 mkdir -p ./log
 
-# 2. 공통 파라미터
 batch_size=128
 base_data="cifar10" # cifar10 or cifar100
 model_name="WideResNet"  # WideResNet or ResNet
@@ -16,7 +14,7 @@ model_name="WideResNet"  # WideResNet or ResNet
 GPU_ID=6
 EPOCHS=200
 START_EPOCHS=80
-# 3. 실험 변수 설정
+
 seeds=(602)
 # rho_modes=("auroc_ma" "linear_inc" "linear_dec" "cosine" "energy_metric" "const")
 rho_modes=("auroc_ma" "energy_metric")
