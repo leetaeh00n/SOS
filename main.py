@@ -81,7 +81,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Directories
-    stage1_base_dir = f"/home/thoon1999/act/{args.ood_gen_mode}_{args.ood_train_mode}_E{args.epochs}/stage1_checkpoints"
+    stage1_base_dir = f"/home/thoon1999/SOS/{args.ood_gen_mode}_{args.ood_train_mode}_E{args.epochs}/stage1_checkpoints"
     stage1_model_path = f"{args.ood_gen_mode}_{args.ood_train_mode}_Stage1_{args.base_data}_{args.model_name}_ep{args.start_epoch}.pth"
     stage1_ckpt_path = os.path.join(stage1_base_dir, stage1_model_path)
     os.makedirs(stage1_base_dir, exist_ok=True)
@@ -181,10 +181,12 @@ def main():
     resume_epoch = load_stage1_checkpoint(device, model, sam_optimizer, scheduler, stage1_ckpt_path)
     actual_start_epoch = resume_epoch
 
-    if args.epochs > 100:
+    if args.epochs <= 100:
+        save_epochs = {41, 61, 81, 100}
+    elif args.epochs <= 200:
         save_epochs = {81, 100, 140, 170, 200}
     else:
-        save_epochs = {41, 61, 81, 100}
+        save_epochs = {201, 250, 300, 400, args.epochs}
 
     # ---------------------------------------------------------
     # Main Loop
