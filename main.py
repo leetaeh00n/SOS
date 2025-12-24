@@ -308,10 +308,10 @@ def main():
                 print(f" -> Val Acc: {acc:.2f}%")
                 last_val_acc = float(acc)
                 torch.save(model.state_dict(), os.path.join(ckpt_dir, f"model_ep{ep}.pth"))
-                if energy_head: 
-                    torch.save(energy_head.state_dict(), os.path.join(ckpt_dir, f"head_ep{ep}.pth"))
-                if sep_head:
-                    torch.save(sep_head.state_dict(), os.path.join(ckpt_dir, f"sep_ep{ep}.pth"))
+                # if energy_head: 
+                #     torch.save(energy_head.state_dict(), os.path.join(ckpt_dir, f"head_ep{ep}.pth"))
+                # if sep_head:
+                #     torch.save(sep_head.state_dict(), os.path.join(ckpt_dir, f"sep_ep{ep}.pth"))
             
             if ep == args.epochs:
                 cfg = dict(args) if hasattr(args, "keys") else vars(args)
