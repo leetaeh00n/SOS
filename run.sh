@@ -83,7 +83,7 @@ for EPOCHS in "${EPOCHS_LIST[@]}"; do
             # 데이터셋에 따른 rho 범위 설정 (필요시 수정)
             if [ "$base_data" == "cifar10" ]; then
             rho_min=0.0
-            rho_max=1.0
+            rho_max=0.5
             GPU_ID=6
             elif [ "$base_data" == "cifar100" ]; then
             rho_min=0.0
@@ -102,6 +102,8 @@ for EPOCHS in "${EPOCHS_LIST[@]}"; do
             echo " -> Gen: ${GEN_MODE}, Train: ${TRAIN_MODE}, Rho: ${rho_mode}, GPU: ${GPU_ID}"
             echo "========================================================"
 
+            SAVE_DIR="./sos_rho_schedule/${GEN_MODE}_${TRAIN_MODE}_E${EPOCHS}/seed${seed}/${rho_mode}/"
+
             # --- python main.py 실행 ---
             if ! CUDA_VISIBLE_DEVICES=${GPU_ID} python main.py \
                 --use_wandb \
@@ -115,7 +117,7 @@ for EPOCHS in "${EPOCHS_LIST[@]}"; do
                 --rho_ood_max ${rho_max} \
                 --seed ${seed} \
                 --temperature 1.0 \
-                --save_dir_base "./sos_rho_schedule/" \
+                --save_dir_base ${SAVE_DIR} \
                 --ood_gen_mode ${GEN_MODE} \
                 --ood_train_mode ${TRAIN_MODE} \
                 ${current_args} \

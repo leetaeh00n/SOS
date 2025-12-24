@@ -81,7 +81,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Directories
-    stage1_base_dir = f"/home/thoon1999/SOS/{args.ood_gen_mode}_{args.ood_train_mode}_E{args.epochs}/stage1_checkpoints"
+    stage1_base_dir = f"/home/thoon1999/SOS/{args.ood_gen_mode}_{args.ood_train_mode}_E{args.epochs}_seed{args.seed}/stage1_checkpoints"
     stage1_model_path = f"{args.ood_gen_mode}_{args.ood_train_mode}_Stage1_{args.base_data}_{args.model_name}_ep{args.start_epoch}.pth"
     stage1_ckpt_path = os.path.join(stage1_base_dir, stage1_model_path)
     os.makedirs(stage1_base_dir, exist_ok=True)

@@ -24,9 +24,9 @@ unified_exp/
 
 # run.sh 스크립트에서 지정한 저장 경로 (--save_dir_base)
 sos_rho_schedule/
-*E100/
-*E200/
-*E500/
+*E100*/
+*E200*/
+*E500*/
 # WandB 로그 폴더
 wandb/
 
