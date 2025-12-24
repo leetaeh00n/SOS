@@ -8,8 +8,8 @@ import pandas as pd
 from utils.dataloader import get_dataloader
 from utils.tools import *
 from utils.ood_metric import *
-from utils.vim import ViM
-from utils.method_train import evaluate
+from metrics.vim import ViM
+from utils.trainer import evaluate
 from model.cifar_resnet import resnet18
 from model.cifar_densenet import DenseNet3
 from model.WideResNet import WideResNet
