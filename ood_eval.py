@@ -29,19 +29,15 @@ model_name = "WideResNet"  # 현재 경로 로직은 WRN에 맞춰져 있음
 epoch = 100
 metric = "auroc_ma"        # "energy_metric" etc.
 
+m_aka = {"WideResNet": "wrn", "ResNet": "resnet", "DenseNet": "densenet", "ResNet50": "resnet50"}
+model_aka = m_aka.get(model_name, model_name.lower())
 # 경로 구성을 위한 설정
 # root_dir 예: ./sos_rho_schedule/ce_binary_E100/seed0/auroc_ma/cifar10
 root_dir = f"./sos_rho_schedule/ce_binary_E100/seed{seed}/{metric}/{base_data}"
-
-# 모델 폴더명 구성 (두 번째 코드의 feat_ -> models_ 로직 반영)
-# target_feat_folder = f"feat_ce_binary_s{seed}_wrn_mode_{metric}_rho0.0-0.5_E0.1"
-# model_folder = target_feat_folder.replace("feat_", "models_")
-# 위 로직을 그대로 쓰거나, 아래처럼 직접 구성:
-model_folder = f"models_ce_binary_s{seed}_wrn_mode_{metric}_rho0.0-0.5_E0.1"
-
+get_rho = lambda data: "0.0-0.5" if data == "cifar10" else "0.0-1.0"
+model_folder = f"models_ce_binary_s{seed}_{model_aka}_mode_{metric}_rho{get_rho(base_data)}_E0.1"
 ckpt_path = os.path.join(root_dir, model_folder, f"model_ep{epoch}.pth")
 
-# CSV 저장 시 구분을 위해 model_type을 파일명이나 설정에서 유추하여 지정
 model_type = f"s{seed}_{metric}_schedule" 
 # =======================================================================
 
@@ -161,18 +157,18 @@ for score_type in ["energy"]:
     print("Results (in %):")
     print(dfs_metrics)
 
-    # 4. 결과 저장 (CSV)
-    df_result = make_result_table(args, base_data, model_name, model_type, score_type, dfs_metrics, include_average=True)
+    # # 4. 결과 저장 (CSV)
+    # df_result = make_result_table(args, base_data, model_name, model_type, score_type, dfs_metrics, include_average=True)
     
-    # 파일명에도 metric이나 seed 정보를 반영하고 싶다면 아래 경로 수정 가능
-    save_path = f'./master_result/{base_data}_result.csv'
+    # # 파일명에도 metric이나 seed 정보를 반영하고 싶다면 아래 경로 수정 가능
+    # save_path = f'./master_result/{base_data}_result.csv'
     
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    if os.path.exists(save_path):
-        existing_df = pd.read_csv(save_path, header=[0,1])
-        combined_df = pd.concat([existing_df, df_result], ignore_index=True)
-        combined_df.to_csv(save_path, index=False)
-    else:
-        df_result.to_csv(save_path, index=False)
+    # os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    # if os.path.exists(save_path):
+    #     existing_df = pd.read_csv(save_path, header=[0,1])
+    #     combined_df = pd.concat([existing_df, df_result], ignore_index=True)
+    #     combined_df.to_csv(save_path, index=False)
+    # else:
+    #     df_result.to_csv(save_path, index=False)
     
-    print(f"Saved results to {save_path}")
+    # print(f"Saved results to {save_path}")

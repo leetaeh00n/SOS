@@ -4,10 +4,9 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 from sklearn.metrics import roc_auc_score, average_precision_score, roc_curve
-from utils.loss_score import sharpness_score_pseudo
 from utils.activation import get_react_score
-from utils.Mahalanobis import Mahalanobis_score, sample_estimator
-from utils.odin import get_odin_score
+from metrics.Mahalanobis import Mahalanobis_score, sample_estimator
+from metrics.odin import get_odin_score
 
 from sklearn.metrics import roc_auc_score, average_precision_score
 
@@ -94,9 +93,6 @@ def get_score(args, device, dataloader, model, temperature=1.0, mode='ID', score
             in_dist=(mode=='ID')
         )
         return scores
-    
-    if score_type == 'our':
-        _, scores, *_ = sharpness_score_pseudo(model, dataloader, args.rho, device)
 
     elif score_type == 'react':
         scores = get_react_score(args, model, dataloader, mode, device)
