@@ -35,7 +35,7 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=0.1)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--weight_decay", type=float, default=5e-4)
-    parser.add_argument("--model_name", type=str, default="WideResNet", choices=["WideResNet", "ResNet"])
+    parser.add_argument("--model_name", type=str, default="WideResNet", choices=["WideResNet", "ResNet", "DenseNet"])
     
     # Model Arch
     parser.add_argument("--depth", type=int, default=40)
