@@ -15,7 +15,7 @@ from torch.utils.data import TensorDataset, DataLoader, Subset
 from model.cifar_resnet import *
 from model.WideResNet import WideResNet
 from model.sephead import SeparationHead
-
+from model.cifar_densenet import DenseNet3
 # Import Utils
 from utils.dataloader import get_dataloader
 from utils.tools import (
@@ -47,6 +47,8 @@ def main():
         model_aka = "wrn"
     elif args.model_name == "ResNet":
         model_aka = f"resnet{18 if args.base_data=='cifar10' else 34}"
+    elif args.model_name == "DenseNet":
+        model_aka = "densenet"
 
     if args.exp_name is None:
         # 자동 이름 생성: GenMode_TrainMode_Details 형태
@@ -146,6 +148,14 @@ def main():
             widen_factor=args.widen_factor, 
             dropRate=args.drop_rate, 
             num_classes=num_classes
+        ).to(device)
+        
+    elif args.model_name == "DenseNet":
+        model = DenseNet3(
+            depth=100,
+            num_classes=num_classes,
+            reduction=0.5,
+            bottleneck=True
         ).to(device)
 
     energy_head = None
@@ -303,8 +313,7 @@ def main():
             if ep == args.start_epoch:
                 save_stage1_checkpoint(model, sam_optimizer, scheduler, ep, stage1_ckpt_path)
             
-            # if ep % 10 == 0 or ep == args.epochs or ep in save_epochs:
-            if ep == args.epochs or ep in save_epochs:
+            if ep % 10 == 0 or ep == args.epochs or ep in save_epochs:
                 v_loss, acc = evaluate(model, test_loader, criterion, device)
                 print(f" -> Val Acc: {acc:.2f}%")
                 last_val_acc = float(acc)
