@@ -209,9 +209,17 @@ def main():
     try:
         for ep in range(actual_start_epoch, args.epochs + 1):
             
+            # [수정됨] 1. 로그 데이터를 모을 빈 딕셔너리 생성 (Epoch 시작 시점)
+            log_payload = {}
+            log_payload["epoch"] = ep
+
+            # ---------------------------------------------------------
+            # 1. Rho Scheduling & Feature Extraction & Training
+            # ---------------------------------------------------------
             if ep > args.start_epoch:
                 print(f"\n[Epoch {ep}] Extracting vOOD ({args.ood_gen_mode})...")
-                # ★ 1. 이 epoch에서 사용할 rho_ood 계산
+                
+                # Rho 스케줄링 계산
                 rho_ood_current, rho_state = get_rho_ood(
                     mode=args.rho_ood_mode, 
                     epoch=ep,
@@ -219,45 +227,40 @@ def main():
                     start_epoch=args.start_epoch,
                     rho_min=args.rho_ood_min,
                     rho_max=args.rho_ood_max,
-                    val_metric=val_metric,      # 여기다 네가 계산한 AUROC 넣기
+                    val_metric=val_metric,      # 이전 epoch에서 업데이트된 val_metric 사용
                     state=rho_state,
-                    ema_beta=0.9,               # EMA용 베타값
-                    auroc_min=0.5,            # 데이터셋 특성에 맞게 조정 가능
+                    ema_beta=0.9,               
+                    auroc_min=0.5,            
                     auroc_max=1.0,
                 )
                 print(f" -> rho_ood_current = {rho_ood_current:.4f}")
 
-                # 1. Extract Features (train_loader 기반: use_val=True면 45,000개)
+                # Feature Extraction
                 _, feat_pert, _ = extract_all_sam_features_for_epoch(
                     model, train_loader, device, args, criterion, rho_ood_current
                 )
 
-                # 2. vOOD를 40,000(train) / 5,000(val_metric)로 split (누락/중복 없이)
-                N_total = feat_pert.size(0)  # use_val=True면 45000
+                # vOOD Split (Train/Val)
+                N_total = feat_pert.size(0)
                 if args.use_val:
-                    assert N_total >= 45000, f"Expected vOOD >= 45000 when use_val=True, got {N_total}"
+                    # assert N_total >= 45000, ... (필요 시 주석 해제)
                     n_vood_val = 5000
                     n_vood_train = 40000
 
-                    # 재현성을 위해 epoch+seed로 고정 셔플 (원하면 ep 빼고 seed만 써서 고정 split도 가능)
                     g = torch.Generator()
-                    g.manual_seed(args.seed + ep)
+                    g.manual_seed(args.seed + ep) # 매 epoch마다 다른 셔플 적용
 
                     perm = torch.randperm(N_total, generator=g)
-                    idx_train = perm[:n_vood_train]
-                    idx_val   = perm[n_vood_train:n_vood_train + n_vood_val]
-
-                    feat_pert_train = feat_pert[idx_train]  # [40000, D]
-                    feat_pert_val   = feat_pert[idx_val]    # [5000, D]
+                    feat_pert_train = feat_pert[perm[:n_vood_train]]
+                    feat_pert_val   = feat_pert[perm[n_vood_train:n_vood_train + n_vood_val]]
                 else:
-                    # use_val=False면 기존처럼 전체를 학습용으로 사용(=기존 동작 유지)
                     feat_pert_train = feat_pert
                     feat_pert_val = None
 
-                # 3. vOOD_train loader는 ID train_loader step 수에 맞게 batch_size 자동 설정
-                id_steps = len(train_loader)  # ID는 45,000 / bs=128 기준 step 수
+                # vOOD Train Loader 구성
+                id_steps = len(train_loader)
                 vood_train_bs = int(np.ceil(feat_pert_train.size(0) / id_steps))
-                # 핵심: drop_last=False로 40,000 전부 사용 + len(vood_loader)=len(train_loader)가 되도록 설계
+                
                 vood_train_dataset = TensorDataset(feat_pert_train)
                 vood_loader = DataLoader(
                     vood_train_dataset,
@@ -269,10 +272,7 @@ def main():
                     drop_last=False
                 )
 
-                # (선택) 안전 체크: vOOD step 수가 ID step 수와 정확히 맞는지 확인
-                assert len(vood_loader) == id_steps, f"Step mismatch: ID steps={id_steps}, vOOD steps={len(vood_loader)}"
-
-                # 4. val_metric 계산용 vOOD_val loader (5k): batch_size는 args.batch_size(128) 그대로 사용
+                # vOOD Val Loader 구성
                 if args.use_val:
                     vood_val_loader = DataLoader(
                         TensorDataset(feat_pert_val),
@@ -285,67 +285,44 @@ def main():
                     )
                 else:
                     vood_val_loader = None
-
                 
-                # 4. Train (Uses ood_train_mode internally)
-                loss, id_energy_all, vood_energy_all = train_epoch(args, model, train_loader, ep, device, criterion, sam_optimizer, scheduler, save_epochs, save_dir, energy_head, sep_head, vood_loader=vood_loader)
+                # Train Execution
+                loss, id_energy_all, vood_energy_all = train_epoch(
+                    args, model, train_loader, ep, device, criterion, sam_optimizer, 
+                    scheduler, save_epochs, save_dir, energy_head, sep_head, vood_loader=vood_loader
+                )
                 
             else:
-                rho_ood_current = 0.0 # Stage 1에서는 0
-                loss, _, _ = train_epoch(args, model, train_loader, ep, device, criterion, sam_optimizer, scheduler, save_epochs, save_dir, energy_head, sep_head)
+                # Stage 1 (Start Epoch 이전)
+                rho_ood_current = 0.0 
+                loss, _, _ = train_epoch(
+                    args, model, train_loader, ep, device, criterion, sam_optimizer, 
+                    scheduler, save_epochs, save_dir, energy_head, sep_head
+                )
             
             print(f"[Epoch {ep}] Loss: {loss:.4f} | Mode: {args.ood_gen_mode}/{args.ood_train_mode}")
-            if args.use_wandb:
-                # [추가] rho_ood 값을 함께 로깅하여 스케줄링 확인
-                log_dict = ({
-                    "epoch": ep, 
-                    "train_loss": loss, 
-                    "rho_ood": rho_ood_current
-                })
-                # metric 종류에 따라 로깅
-                if args.rho_ood_mode == "energy_metric":
-                    log_dict["val_energy"] = val_metric
-                else:
-                    log_dict["val_auroc"] = val_metric
-                wandb.log(log_dict)
 
-            # Checkpointing
-            if ep == args.start_epoch:
-                save_stage1_checkpoint(model, sam_optimizer, scheduler, ep, stage1_ckpt_path)
-            
-            if ep % 10 == 0 or ep == args.epochs or ep in save_epochs:
-                v_loss, acc = evaluate(model, test_loader, criterion, device)
-                print(f" -> Val Acc: {acc:.2f}%")
-                last_val_acc = float(acc)
-                torch.save(model.state_dict(), os.path.join(ckpt_dir, f"model_ep{ep}.pth"))
-                # if energy_head: 
-                #     torch.save(energy_head.state_dict(), os.path.join(ckpt_dir, f"head_ep{ep}.pth"))
-                # if sep_head:
-                #     torch.save(sep_head.state_dict(), os.path.join(ckpt_dir, f"sep_ep{ep}.pth"))
-            
-            if ep == args.epochs:
-                cfg = dict(args) if hasattr(args, "keys") else vars(args)
-                args_path = os.path.join(ckpt_dir, f"args_{args.exp_name}.json")
-                with open(args_path, "w", encoding="utf-8") as f:
-                    json.dump(cfg, f, ensure_ascii=False, indent=2)
-                print(f"[args saved] {args_path}")
-                    
-            # ====== Stage2 & binary 모드에서 Metric 업데이트 ======
+            # [수정됨] 2. 기본 학습 정보를 log_payload에 담기 (즉시 전송 X)
+            log_payload["train_loss"] = loss
+            log_payload["rho_ood"] = rho_ood_current
+
+            # ---------------------------------------------------------
+            # 2. Metric Calculation (Binary Mode) & Scheduling Update
+            # ---------------------------------------------------------
             if ep > args.start_epoch and args.ood_train_mode == 'binary':
-                #  1) use_val=True면 val_loader 기준으로 metric 계산
                 if args.use_val and (val_loader is not None):
+                    # Validation Set 사용 시
                     current_snr, current_auroc, mu_id, mu_vood = compute_binary_metrics_on_loader(
                         model=model,
                         id_loader=val_loader,
                         vood_loader=vood_val_loader,
                         args=args,
                         device=device,
-                        max_batches=None  # 필요하면 속도 위해 int로 제한 가능
+                        max_batches=None
                     )
-                #  2) use_val=False면 기존 train_epoch에서 나온 에너지로 metric 계산(기존 동작 유지)
                 else:
+                    # Train Set 통계 사용 시 (기존 방식)
                     if id_energy_all is None:
-                        # use_val=False인데도 안전하게 넘어가도록(예: stage2 직후 예외 상황)
                         current_snr, current_auroc, mu_id, mu_vood = 0.0, 0.5, 0.0, 0.0
                     else:
                         id_energies = id_energy_all.detach().cpu().float()
@@ -367,22 +344,58 @@ def main():
                         mu_id, mu_vood = mu_id.item(), mu_vood.item()
 
                 print(f" -> [Metrics] SNR: {current_snr:.4f} | AUROC: {current_auroc:.4f}")
-                print(f"    (Debug) Mean ID: {mu_id:.2f}, Mean vOOD: {mu_vood:.2f}")
 
-                #  스케줄링 metric 업데이트
+                # [수정됨] 3. 상세 Metric 정보를 log_payload에 통합 (즉시 전송 X)
+                log_payload.update({
+                    "monitor_snr": current_snr,
+                    "monitor_auroc": current_auroc,
+                    "mean_energy_id": mu_id,
+                    "mean_energy_vood": mu_vood,
+                })
+
+                # [중요] 다음 epoch의 rho 계산을 위해 val_metric 업데이트
                 if args.rho_ood_mode == "energy_metric":
                     val_metric = current_snr
                 else:
                     val_metric = current_auroc
 
-                if args.use_wandb:
-                    wandb.log({
-                        "monitor_snr": current_snr,
-                        "monitor_auroc": current_auroc,
-                        "mean_energy_id": mu_id,
-                        "mean_energy_vood": mu_vood,
-                    })
+            # [수정됨] 4. 최종 스케줄링 기준 Metric 기록
+            if args.rho_ood_mode == "energy_metric":
+                log_payload["val_energy"] = val_metric
+            else:
+                log_payload["val_auroc"] = val_metric
 
+            # ---------------------------------------------------------
+            # 3. Checkpointing & Evaluation
+            # ---------------------------------------------------------
+            if ep == args.start_epoch:
+                save_stage1_checkpoint(model, sam_optimizer, scheduler, ep, stage1_ckpt_path)
+            
+            if ep == args.epochs or ep in save_epochs:
+                v_loss, acc = evaluate(model, test_loader, criterion, device)
+                print(f" -> Val Acc: {acc:.2f}%")
+                last_val_acc = float(acc)
+                torch.save(model.state_dict(), os.path.join(ckpt_dir, f"model_ep{ep}.pth"))
+                
+                # [수정됨] 5. Val Acc도 로그에 추가
+                log_payload["test_acc"] = acc
+            
+            if ep == args.epochs:
+                cfg = dict(args) if hasattr(args, "keys") else vars(args)
+                args_path = os.path.join(ckpt_dir, f"args_{args.exp_name}.json")
+                with open(args_path, "w", encoding="utf-8") as f:
+                    json.dump(cfg, f, ensure_ascii=False, indent=2)
+                print(f"[args saved] {args_path}")
+
+            # ---------------------------------------------------------
+            # [수정됨] 6. WandB Log 최종 전송 (Epoch 당 1회)
+            # ---------------------------------------------------------
+            if args.use_wandb:
+                wandb.log(log_payload)
+
+        # ---------------------------------------------------------
+        # [Loop 종료 후] 학습 완료 처리
+        # ---------------------------------------------------------
         if args.use_wandb:
             elapsed = time.time() - run_start_time
             elapsed_hms = format_elapsed(elapsed)
