@@ -233,6 +233,8 @@ def main():
                     auroc_min=0.5,            
                     auroc_max=1.0,
                 )
+                rho_ood_current = rho_state["rho_ema"] = 0.95 * rho_state.get("rho_ema", rho_ood_current) + 0.05 * rho_ood_current
+
                 print(f" -> rho_ood_current = {rho_ood_current:.4f}")
 
                 # Feature Extraction
