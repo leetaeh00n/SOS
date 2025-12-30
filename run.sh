@@ -10,8 +10,8 @@ mkdir -p ./log
 
 # --- 2. 기본 하이퍼파라미터 ---
 batch_size=128
-base_data="cifar10"      # cifar10 or cifar100
-model_name="ResNet"  # WideResNet or ResNet
+base_data="cifar100"      # cifar10 or cifar100
+model_name="DenseNet"  # WideResNet or ResNet
 
 
 # EPOCHS=200
@@ -84,11 +84,11 @@ for EPOCHS in "${EPOCHS_LIST[@]}"; do
             if [ "$base_data" == "cifar10" ]; then
             rho_min=0.0
             rho_max=0.5
-            GPU_ID=3
+            GPU_ID=5
             elif [ "$base_data" == "cifar100" ]; then
             rho_min=0.0
             rho_max=1.0
-            GPU_ID=3
+            GPU_ID=4
             fi
 
             # 실행 ID 및 로그 파일명 생성
@@ -138,4 +138,4 @@ for EPOCHS in "${EPOCHS_LIST[@]}"; do
   done
 done
 echo "[$(date)] All unified experiments done."
-' > ./nohup_launcher.out 2>&1 &
+' > ./nohup_launcher_densenet_cifar10.out 2>&1 &
