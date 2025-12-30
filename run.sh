@@ -84,7 +84,7 @@ for EPOCHS in "${EPOCHS_LIST[@]}"; do
             if [ "$base_data" == "cifar10" ]; then
             rho_min=0.0
             rho_max=0.5
-            GPU_ID=6
+            GPU_ID=5
             elif [ "$base_data" == "cifar100" ]; then
             rho_min=0.0
             rho_max=1.0
@@ -138,4 +138,4 @@ for EPOCHS in "${EPOCHS_LIST[@]}"; do
   done
 done
 echo "[$(date)] All unified experiments done."
-' > ./nohup_launcher_densenet.out 2>&1 &
+' > ./nohup_launcher_densenet_cifar10.out 2>&1 &
