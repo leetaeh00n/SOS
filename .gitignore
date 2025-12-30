@@ -24,6 +24,7 @@ unified_exp/
 
 # run.sh 스크립트에서 지정한 저장 경로 (--save_dir_base)
 sos_rho_schedule/
+sos_rho_schedule_ema/
 *E100*/
 *E200*/
 *E500*/
