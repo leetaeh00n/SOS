@@ -2,7 +2,7 @@
 
 # 여기서 정의한 변수를 파일명과 내부 스크립트 모두에서 사용합니다.
 CURRENT_DATA="cifar10"      # cifar10 or cifar100
-CURRENT_MODEL="WideResNet"  # WideResNet or ResNet or DenseNet
+CURRENT_MODEL="DenseNet"  # WideResNet or ResNet or DenseNet
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 LOG_FILENAME="./nohup_${CURRENT_DATA}_${CURRENT_MODEL}_${TIMESTAMP}.out"
@@ -26,10 +26,10 @@ batch_size=128
 base_data="$CURRENT_DATA"    
 model_name="$CURRENT_MODEL" 
 
-EPOCHS_LIST=(100 200 500)
+EPOCHS_LIST=(500)
 
 # --- 3. 실험 변수 (Loop 대상) ---
-seeds=(0 1 2 3 4)
+seeds=(3 4)
 rho_modes=("auroc_ma" "energy_metric")
 MODE_LIST=("ce:binary")
 LAMBDA=("0.1:0.1:0.1:1.0")
@@ -62,7 +62,7 @@ for EPOCHS in "${EPOCHS_LIST[@]}"; do
             fi
 
             if [ "$base_data" == "cifar10" ]; then
-                rho_min=0.0; rho_max=0.5; GPU_ID=5
+                rho_min=0.0; rho_max=0.5; GPU_ID=6
             elif [ "$base_data" == "cifar100" ]; then
                 rho_min=0.0; rho_max=1.0; GPU_ID=5
             fi
@@ -76,8 +76,8 @@ for EPOCHS in "${EPOCHS_LIST[@]}"; do
             echo "[$(date)] Starting Run: ${RUN_ID}"
             echo "========================================================"
 
-            SAVE_DIR="./sos_rho_schedule_ema/${GEN_MODE}_${TRAIN_MODE}_E${EPOCHS}/seed${seed}/${rho_mode}/"
-
+            # SAVE_DIR="./sos_rho_schedule_ema/${GEN_MODE}_${TRAIN_MODE}_E${EPOCHS}/seed${seed}/${rho_mode}/"
+            SAVE_DIR="./sos_rho_schedule/${GEN_MODE}_${TRAIN_MODE}_E${EPOCHS}/seed${seed}/${rho_mode}/"
             if ! CUDA_VISIBLE_DEVICES=${GPU_ID} python main.py \
                 --use_wandb \
                 --batch_size ${batch_size} \

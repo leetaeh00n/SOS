@@ -30,7 +30,7 @@ sos_rho_schedule_ema/
 *E500*/
 # WandB 로그 폴더
 wandb/
-
+_runs/
 # 혹시 루트 경로에 생길 수 있는 가중치 및 데이터 파일
 *.pth
 *.npy

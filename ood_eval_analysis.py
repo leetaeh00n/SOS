@@ -23,12 +23,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f"Device: {device}")
 
 # ================= 사용자 탐색 설정 =================
-base_datas = ["cifar10", "cifar100"]          # ID 데이터셋 리스트
-model_names = ["WideResNet", "ResNet", "DenseNet"] # 탐색할 모델 리스트
+base_datas = ["cifar100"]          # ID 데이터셋 리스트
+# model_names = ["WideResNet", "ResNet", "DenseNet"] # 탐색할 모델 리스트
+model_names = ["WideResNet"] # 탐색할 모델 리스트
 seeds = [0, 1, 2, 3, 4]                       # 시드 리스트
-train_metrics = ["auroc_ma", "energy_metric"] # 모델 폴더 구분용 Metric
-epochs_list = [100, 200, 500]                 # 탐색할 Epoch 리스트
-
+train_metrics = ["energy_metric"] # 모델 폴더 구분용 Metric
+epochs_list = [100]                 # 탐색할 Epoch 리스트
+# epochs_list = [200]
 # 평가에 사용할 Score (Energy 고정)
 eval_score_type = "energy" 
 # =================================================
@@ -98,10 +99,10 @@ for base_data in base_datas:
                     rho_range = "0.0-0.5" if base_data == "cifar10" else "0.0-1.0"
                     
                     # root_dir에 Epoch 반영: ce_binary_E{epoch}
-                    root_dir = f"./sos_rho_schedule/ce_binary_E{epoch}/seed{seed}/{t_metric}/{base_data}"
+                    root_dir = f"./sos_rho_schedule_ema/ce_binary_E{epoch}/seed{seed}/{t_metric}/{base_data}"
                     
                     # model_folder 이름 구성 (model_aka 반영)
-                    model_folder = f"models_ce_binary_s{seed}_{model_aka}_mode_{t_metric}_rho{rho_range}_E0.1"
+                    model_folder = f"models_ce_binary_E_{epoch}_s{seed}_{model_aka}_mode_{t_metric}_rho{rho_range}_E0.1"
                     
                     # 파일명에 Epoch 반영: model_ep{epoch}.pth
                     ckpt_path = os.path.join(root_dir, model_folder, f"model_ep{epoch}.pth")
